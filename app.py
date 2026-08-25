@@ -21,38 +21,53 @@ st.set_page_config(
 
 st.title("🏢 아파트 공용관리비 예측 & 이상단지 원인분석 대시보드")
 st.divider()
+import os
+import joblib
+import urllib.request
+import pandas as pd
+import streamlit as st
 
 # ============================================================
-# 2. 모델 및 데이터 로드
+# 2. 모델 및 데이터 로드 (GitHub Release URL 지원)
 # ============================================================
-MODEL_PATH = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/apt_management_cost_rf.joblib"
-ANOMALY_PATH = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_more.csv"
-ALL_DATA_PATH = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_result.csv"
 
+# 1) 로컬 저장 경로 설정
+MODEL_LOCAL_PATH = "model/apt_management_cost_rf.joblib"
+
+# 2) GitHub Release 웹 URL 설정
+MODEL_URL = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/apt_management_cost_rf.joblib"
+ANOMALY_URL = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_more.csv"
+ALL_DATA_URL = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_result.csv"
+
+# 모델 로드 함수 (파일이 없으면 GitHub에서 자동 다운로드)
 @st.cache_resource
-def load_saved_model(path):
-    if not os.path.exists(path):
-        return None
-    return joblib.load(path)
+def load_saved_model(local_path, url):
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    if not os.path.exists(local_path):
+        with st.spinner("📥 대용량 모델 파일을 다운로드 중입니다... (최초 1회만 진행)"):
+            try:
+                urllib.request.urlretrieve(url, local_path)
+            except Exception as e:
+                st.error(f"❌ 모델 다운로드 실패: {e}")
+                return None
+    return joblib.load(local_path)
 
+# CSV 데이터 로드 함수 (pandas가 URL을 직접 읽을 수 있음)
 @st.cache_data
-def load_anomaly_data(path):
-    if not os.path.exists(path):
+def load_csv_data(url_or_path):
+    try:
+        return pd.read_csv(url_or_path)
+    except Exception as e:
+        st.error(f"❌ CSV 파일 로드 실패 (`{url_or_path}`): {e}")
         return None
-    return pd.read_csv(path)
 
-@st.cache_data
-def load_ALL_data(path):
-    if not os.path.exists(path):
-        return None
-    return pd.read_csv(path)
-
-saved_data = load_saved_model(MODEL_PATH)
-anomaly_df_raw = load_anomaly_data(ANOMALY_PATH)
-all_df_raw = load_ALL_data(ALL_DATA_PATH)
+# 데이터 읽어오기 실행
+saved_data = load_saved_model(MODEL_LOCAL_PATH, MODEL_URL)
+anomaly_df_raw = load_csv_data(ANOMALY_URL)
+all_df_raw = load_csv_data(ALL_DATA_URL)
 
 if saved_data is None:
-    st.error(f"❌ 모델 파일을 찾을 수 없습니다. 경로를 확인해주세요: `{MODEL_PATH}`")
+    st.error(f"❌ 모델 파일을 찾을 수 없거나 불러올 수 없습니다. 경로를 확인해주세요: `{MODEL_URL}`")
     st.stop()
 
 rf_model = saved_data["model"]
