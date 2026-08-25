@@ -26,9 +26,8 @@ import joblib
 import urllib.request
 import pandas as pd
 import streamlit as st
-
 # ============================================================
-# 2. 모델 및 데이터 로드 (GitHub Release URL 지원)
+# 2. 모델 및 데이터 로드 (분할 다운로드로 메모리 최적화)
 # ============================================================
 
 # 1) 로컬 저장 경로 설정
@@ -39,20 +38,30 @@ MODEL_URL = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/apt_mana
 ANOMALY_URL = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_more.csv"
 ALL_DATA_URL = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_result.csv"
 
-# 모델 로드 함수 (파일이 없으면 GitHub에서 자동 다운로드)
+# 모델 로드 함수 (1MB씩 청크 단위로 나누어 받아서 RAM 부하 방지)
 @st.cache_resource
 def load_saved_model(local_path, url):
     os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    
     if not os.path.exists(local_path):
-        with st.spinner("📥 대용량 모델 파일을 다운로드 중입니다... (최초 1회만 진행)"):
+        with st.spinner("📥 대용량 모델 파일을 안전하게 다운로드 중입니다... (최초 1회만 진행)"):
             try:
-                urllib.request.urlretrieve(url, local_path)
+                # stream=True 옵션으로 메모리 일시 점유 최소화
+                response = requests.get(url, stream=True, timeout=120)
+                response.raise_for_status()
+                
+                # 1MB(1024*1024 bytes) 단위로 나누어 디스크에 작성
+                with open(local_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            f.write(chunk)
             except Exception as e:
                 st.error(f"❌ 모델 다운로드 실패: {e}")
                 return None
+                
     return joblib.load(local_path)
 
-# CSV 데이터 로드 함수 (pandas가 URL을 직접 읽을 수 있음)
+# CSV 데이터 로드 함수
 @st.cache_data
 def load_csv_data(url_or_path):
     try:
