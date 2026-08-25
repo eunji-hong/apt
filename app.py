@@ -25,9 +25,9 @@ st.divider()
 # ============================================================
 # 2. 모델 및 데이터 로드
 # ============================================================
-MODEL_PATH = "model/apt_management_cost_rf.joblib"
-ANOMALY_PATH = "data/model_results/관리비_이상단지.csv"
-ALL_DATA_PATH = "data/model_results/관리비_예측결과.csv"
+MODEL_PATH = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/apt_management_cost_rf.joblib"
+ANOMALY_PATH = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_more.csv"
+ALL_DATA_PATH = "https://github.com/eunji-hong/apt/releases/download/v1.0.0/fee_result.csv"
 
 @st.cache_resource
 def load_saved_model(path):
