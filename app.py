@@ -21,9 +21,9 @@ st.set_page_config(
 
 st.title("🏢 아파트 공용관리비 예측 및 진단 대시보드")
 st.markdown("""
-> **💡 [Project Insight & Troubleshooting]**
-> * **데이터 수집 한계 극복**: 공동주택관리 사이트 조회 제한(1년치 제한, CSV 다운로드 부재)으로 인한 상세 이력 확보 제약 발생 -> 안정적으로 확보 가능한 공용관리비 및 핵심 단지 스펙(Random Forest, $R^2$ 0.85) 중심 모델 구축.
-> * **향후 개선 계획**: 추후 자동화 웹 크롤링 파이프라인을 도입하여 장기수선충당금 및 시계열 유지관리 데이터를 확장할 예정임.
+> **💡 [Project Core Insights & Value]**
+> * **규모의 경제 검증 완료**: 데이터 탐색(EDA) 결과, 세대수 규모가 커질수록 ㎡당 공용관리비가 감소하는 안정화 패턴(규모의 경제)을 머신러닝 피처로 입증 ($R^2$ 0.85).
+> * **이상 단지 심층 진단 시스템**: 단순 예측을 넘어, 실제 부과금액과 예측값 간의 오차(Residual)를 분석하여 과다/과소 부과 단지의 인과관계를 입체적으로 진단.
 """)
 st.divider()
 
@@ -78,9 +78,8 @@ tab1, tab2, tab3 = st.tabs([
     "🔍 개별 아파트 검색 & 유사단지 비교", 
     "🚨 이상단지 심층 & 원인 분석"
 ])
-
 # ------------------------------------------------------------
-# TAB 1: 시뮬레이션 및 사용자 맞춤 면적별 예측
+# TAB 1: 시뮬레이션 및 사용자 맞춤 면적별 예측 (슬라이드바 적용 + 평가 추가)
 # ------------------------------------------------------------
 with tab1:
     st.subheader("💡 단지 주요 조건 설정 (Permutation Importance 상위 변수 중심)")
@@ -88,7 +87,8 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        management_area = st.number_input("관리비부과면적 (㎡)", min_value=1000.0, max_value=200000.0, value=15000.0, step=500.0)
+        # 🟢 관리비부과면적을 슬라이더로 변경
+        management_area = st.slider("관리비부과면적 (㎡)", min_value=1000.0, max_value=100000.0, value=15000.0, step=500.0)
         total_hh = st.slider("세대수", min_value=50, max_value=3000, value=700, step=50)
         use_approval_year = st.slider("사용승인연도 (준공 연도)", min_value=1990, max_value=2026, value=2015, step=1)
 
@@ -123,7 +123,7 @@ with tab1:
     predicted_cost_per_sqm = model.predict(input_df)[0]
 
     st.divider()
-    st.subheader("🏡 사용자 맞춤 전용면적별 관리비 시뮬레이션")
+    st.subheader("🏡 사용자 맞춤 전용면적별 관리비 시뮬레이션 및 평가")
     
     target_area = st.slider("분석할 전용면적(㎡)을 선택하세요:", min_value=30, max_value=150, value=84, step=1)
     charged_area_sim = target_area * 1.3 
@@ -139,6 +139,25 @@ with tab1:
     with m4:
         st.metric("예상 연간 관리비", f"{(monthly_cost*12):,.0f} 원")
 
+    # 🟢 시뮬레이션 결과에 대한 자동 평가 및 진단 로직 추가
+    st.markdown("---")
+    st.markdown("#### 🎯 시뮬레이션 단지 관리비 종합 평가 소견")
+    
+    if "㎡당_공용관리비" in df.columns:
+        median_market_cost = df["㎡당_공용관리비"].median()
+        cost_diff_pct = ((predicted_cost_per_sqm - median_market_cost) / median_market_cost) * 100
+        
+        if predicted_cost_per_sqm < median_market_cost * 0.9:
+            eval_title = "🟢 매우 경제적임 (시장 평균 대비 저렴)"
+            eval_desc = f"설정하신 단지 스펙은 전체 시장 중앙값({median_market_cost:,.0f}원/㎡) 대비 약 **{abs(cost_diff_pct):.1f}% 낮게** 예측되어, 공용관리비 운영 효율성이 매우 우수한 조건입니다."
+        elif predicted_cost_per_sqm <= median_market_cost * 1.1:
+            eval_title = "🟡 시장 평균 수준 (적정 관리비)"
+            eval_desc = f"설정하신 단지 스펙은 전체 시장 평균 수준({median_market_cost:,.0f}원/㎡)과 유사하여, **표준적인 공용관리비**가 부과될 것으로 예상됩니다."
+        else:
+            eval_title = "🔴 다소 높은 부담 (시장 평균 상회)"
+            eval_desc = f"설정하신 단지 스펙은 시장 중앙값 대비 약 **{cost_diff_pct:.1f}% 높게** 예측되었습니다. 세대수 대비 인프라(주차/CCTV 등) 과다 혹은 소규모 단지 특유의 규모의 경제 한계 영향일 수 있습니다."
+        
+        st.info(f"**[{eval_title}]**\n\n{eval_desc}")
 # ------------------------------------------------------------
 # TAB 2: 개별 아파트 검색 & 유사단지 비교 진단
 # ------------------------------------------------------------
