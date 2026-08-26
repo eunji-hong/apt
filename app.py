@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # 한글 폰트 설정 (Windows 기준: Malgun Gothic)
-plt.rc('font', family='Malgun Gothic')
+# plt.rc('font', family='Malgun Gothic')
 plt.rc('axes', unicode_minus=False)
 
 # ============================================================
