@@ -78,8 +78,9 @@ tab1, tab2, tab3 = st.tabs([
     "🔍 개별 아파트 검색 & 유사단지 비교", 
     "🚨 이상단지 심층 & 원인 분석"
 ])
+
 # ------------------------------------------------------------
-# TAB 1: 시뮬레이션 및 사용자 맞춤 면적별 예측 (슬라이드바 적용 + 평가 추가)
+# TAB 1: 시뮬레이션 및 사용자 맞춤 면적별 예측 (관리비부과면적 자동 계산)
 # ------------------------------------------------------------
 with tab1:
     st.subheader("💡 단지 주요 조건 설정 (Permutation Importance 상위 변수 중심)")
@@ -87,22 +88,24 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        # 🟢 관리비부과면적을 슬라이더로 변경
-        management_area = st.slider("관리비부과면적 (㎡)", min_value=1000.0, max_value=100000.0, value=15000.0, step=500.0)
         total_hh = st.slider("세대수", min_value=50, max_value=3000, value=700, step=50)
         use_approval_year = st.slider("사용승인연도 (준공 연도)", min_value=1990, max_value=2026, value=2015, step=1)
+        max_floors = st.slider("최고층수", min_value=5, max_value=50, value=20, step=1)
 
     with col2:
         total_parking = st.slider("총주차대수", min_value=50, max_value=4000, value=800, step=50)
         cctv_cnt = st.slider("CCTV 대수", min_value=5, max_value=200, value=40, step=5)
-        max_floors = st.slider("최고층수", min_value=5, max_value=50, value=20, step=1)
 
+    # 🟢 관리비부과면적 자동 산출 (세대당 평균 전용면적 약 80㎡ + 공용면적 감안하여 세대당 약 110㎡ 부과면적 가정)
+    estimated_management_area = total_hh * 110.0
+
+    # 파생 변수 계산
     size_index = total_hh * max_floors
     parking_per_hh = total_parking / total_hh
     cctv_per_hh = cctv_cnt / total_hh
 
     input_dict = {
-        "관리비부과면적": management_area,
+        "관리비부과면적": estimated_management_area,
         "세대수": total_hh,
         "단지규모지수": size_index,
         "사용승인연도": use_approval_year,
@@ -139,7 +142,7 @@ with tab1:
     with m4:
         st.metric("예상 연간 관리비", f"{(monthly_cost*12):,.0f} 원")
 
-    # 🟢 시뮬레이션 결과에 대한 자동 평가 및 진단 로직 추가
+    # 시뮬레이션 결과 평가 소견
     st.markdown("---")
     st.markdown("#### 🎯 시뮬레이션 단지 관리비 종합 평가 소견")
     
@@ -158,6 +161,8 @@ with tab1:
             eval_desc = f"설정하신 단지 스펙은 시장 중앙값 대비 약 **{cost_diff_pct:.1f}% 높게** 예측되었습니다. 세대수 대비 인프라(주차/CCTV 등) 과다 혹은 소규모 단지 특유의 규모의 경제 한계 영향일 수 있습니다."
         
         st.info(f"**[{eval_title}]**\n\n{eval_desc}")
+
+
 # ------------------------------------------------------------
 # TAB 2: 개별 아파트 검색 & 유사단지 비교 진단
 # ------------------------------------------------------------
