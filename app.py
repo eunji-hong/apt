@@ -303,7 +303,8 @@ with tab2:
                 "평균 대비 월 차액": f"{gap_monthly:+,.0f} 원"
             })
 
-        st.dataframe(pd.DataFrame(calc_rows), use_container_width=True, hide_index=True)
+        # 🟢 width='stretch' 적용 완료
+        st.dataframe(pd.DataFrame(calc_rows), width='stretch', hide_index=True)
     else:
         st.warning("⚠️ 데이터프레임에 '단지명' 컬럼이 존재하지 않습니다.")
 
@@ -383,11 +384,14 @@ with tab3:
                     "전체 시장 중앙값": f"{m_val:,.1f}" if isinstance(m_val, (int, float)) else str(m_val)
                 })
         
-        st.dataframe(pd.DataFrame(spec_compare_data), use_container_width=True, hide_index=True)
+        # 🟢 width='stretch' 적용 완료
+        st.dataframe(pd.DataFrame(spec_compare_data), width='stretch', hide_index=True)
 
         st.markdown("---")
         st.markdown("#### 📊 전체 이상 단지 리스트 한눈에 보기")
         display_cols = [c for c in ["단지명", "세대수", "사용승인연도", "㎡당_공용관리비", "모델예측값", "예측오차"] if c in df.columns]
-        st.dataframe(top_anomalies[display_cols], use_container_width=True, hide_index=True)
+        
+        # 🟢 width='stretch' 적용 완료
+        st.dataframe(top_anomalies[display_cols], width='stretch', hide_index=True)
     else:
         st.warning("⚠️ 데이터 분석을 위한 필수 컬럼이 부족합니다.")
